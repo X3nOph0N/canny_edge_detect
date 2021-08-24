@@ -7,11 +7,10 @@ from math import pi,exp
 
 def load_fig(file_name: str, **kwargs) -> tuple(ndarray, str):
     fig = imread(filename=file_name, flags=[-1])
-    fig_type = 'GRB' if len(fig.shape) > 2 else 'GREY'
-    return fig, fig_type
+    return fig
 
 
-def show_figs(fig: ndarray,fig_type:str, **kwargs) -> None:
+def show_figs(fig: ndarray, **kwargs) -> None:
 
     window_name = 'canny edge detect algorithm'
     processed_fig = fig.copy()
@@ -20,8 +19,8 @@ def show_figs(fig: ndarray,fig_type:str, **kwargs) -> None:
         min_val = getTrackbarPos('min_Val', window_name)
         if min_val > getTrackbarPos('max_Val', window_name):
             setTrackbarPos('max_Val', window_name, min_val)
-        processed_fig = process_fig(fig)
-        return
+        process_fig(fig,processed_fig)
+        return None
 
     def on_switch_update()-> None:
         if getTrackbarPos('0:OFF\n1:ON') == 1:
@@ -49,8 +48,9 @@ def show_figs(fig: ndarray,fig_type:str, **kwargs) -> None:
     return
 
 
-def process_fig(fig: ndarray, fig_type: str, **kwargs) -> ndarray:
-    # TODO
+def process_fig(fig: ndarray, target: ndarray, **kwargs) -> None:
+    filtered_fig = gaussian_filter(fig)
+    target = filtered_fig.copy()
     return
 
 
