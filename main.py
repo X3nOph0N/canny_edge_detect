@@ -4,7 +4,7 @@ from utils import load_fig, show_figs
 
 def main(args):
     fig, fig_type = load_fig(**vars(args))
-    show_figs(fig, **vars(args))
+    show_figs(fig,fig_type, **vars(args))
     return
 
 
