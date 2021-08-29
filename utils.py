@@ -16,7 +16,7 @@ def show_figs(fig: ndarray, **kwargs) -> None:
 
     kernel_size = kwargs['gaussian_kernel_size']
     sigma = kwargs['gaussian_sigma']
-    window_name = 'canny edge detect algorithm'
+    window_name = 'canny edge gradientect algorithm'
     processed_fig = fig.copy()
 
     def on_val_update() -> None:
@@ -111,7 +111,24 @@ def calculate_gradient(fig: ndarray) -> tuple(ndarray, ndarray):
 
 def non_max_regression(gradient: ndarray, theta: ndarray) -> ndarray:
     regression_fig = ndarray(gradient.shape)
-    # TODO
+    for i in range(regression_fig.shape[0]):
+        for j in range(regression_fig.shape[1]):
+            if theta[i][j] < 0:
+                theta[i][j] += 360
+
+            if ((j+1) < regression_fig.shape[1]) and ((j-1) >= 0) and ((i+1) < regression_fig.shape[0]) and ((i-1) >= 0):
+                if (theta[i][j] >= 337.5 or theta[i][j] < 22.5) or (theta[i][j] >= 157.5 and theta[i][j] < 202.5):
+                    if gradient[i][j] >= gradient[i][j + 1] and gradient[i][j] >= gradient[i][j - 1]:
+                        regression_fig[i][j] = gradient[i][j]
+                if (theta[i][j] >= 22.5 and theta[i][j] < 67.5) or (theta[i][j] >= 202.5 and theta[i][j] < 247.5):
+                    if gradient[i][j] >= gradient[i - 1][j + 1] and gradient[i][j] >= gradient[i + 1][j - 1]:
+                        regression_fig[i][j] = gradient[i][j]
+                if (theta[i][j] >= 67.5 and theta[i][j] < 112.5) or (theta[i][j] >= 247.5 and theta[i][j] < 292.5):
+                    if gradient[i][j] >= gradient[i - 1][j] and gradient[i][j] >= gradient[i + 1][j]:
+                        regression_fig[i][j] = gradient[i][j]
+                if (theta[i][j] >= 112.5 and theta[i][j] < 157.5) or (theta[i][j] >= 292.5 and theta[i][j] < 337.5):
+                    if gradient[i][j] >= gradient[i - 1][j - 1] and gradient[i][j] >= gradient[i + 1][j + 1]:
+                        regression_fig[i][j] = gradient[i][j]
     return regression_fig
 
 
