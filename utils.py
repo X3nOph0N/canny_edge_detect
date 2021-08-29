@@ -7,44 +7,77 @@ from scipy.signal import convolve2d
 from math import pi, exp
 
 
-def load_fig(file_name: str, **kwargs) -> ndarray:
-    fig = imread(filename=file_name, flags=[-1])
+def load_fig(input_file_name: str, **kwargs) -> ndarray:
+    """
+    This is the function who will load the picture.
+    @input:
+        file_name:a string indicates where the figure is.
+    @output:
+        fig: a figure in 2-dimension matrix form.
+        (Only grayscale figure supported now)
+    """
+    fig = imread(filename=input_file_name, flags=0)
     return fig
 
 
-def show_figs(fig: ndarray, **kwargs) -> None:
+def show_figs(fig: ndarray,gaussian_kernel_size:int,gaussian_sigma:float, **kwargs) -> None:
+    """
+    This is the function define how window interact to user and
+    how the origin figure will be shown.
+    @input:
+        fig: a figure in 2-dimensional matrix form.
+        gaussian_kernel_size: a integer indicates the shape of the gaussian smoothing kernel.
+        gaussian_sigma: a float used in gaussian smoothing, a bigger number means more close to average smoothing.
+        (optional) output_file_name:this is a string containing the path where the program should storage the processed figure.
+            If given the program will automatically save the figure in the path given or thr program will ignore it.
+    @output:
+        None
+    """
+    kernel_size = gaussian_kernel_size
+    sigma = gaussian_sigma
 
-    kernel_size = kwargs['gaussian_kernel_size']
-    sigma = kwargs['gaussian_sigma']
-    window_name = 'canny edge gradientect algorithm'
-    processed_fig = fig.copy()
+    window_name = 'canny edge detect algorithm'
 
-    def on_val_update() -> None:
+    # Define the callbacks of different controls seperately to import experience 
+    # and make it more clear.
+    def on_max_val_update(*args, **kwargs) -> None:
+        max_val = getTrackbarPos('max_Val', window_name)
+        if max_val < getTrackbarPos('min_Val', window_name):
+            setTrackbarPos('min_Val', window_name, max_val)
+        setTrackbarPos('0:OFF 1:ON', window_name, 0)
+        imshow(window_name, fig)
+        return None
+
+    def on_min_val_update(*args, **kwargs) -> None:
         min_val = getTrackbarPos('min_Val', window_name)
         if min_val > getTrackbarPos('max_Val', window_name):
             setTrackbarPos('max_Val', window_name, min_val)
-        max_val = getTrackbarPos('max_Val', window_name)
-        process_fig(fig, processed_fig, kernel_size, sigma, min_val, max_val)
+        setTrackbarPos('0:OFF 1:ON', window_name, 0)
+        imshow(window_name, fig)
         return None
 
-    def on_switch_update() -> None:
-        if getTrackbarPos('0:OFF\n1:ON') == 1:
-            imshow(processed_fig)
+    def on_switch_update(*args, **kwargs) -> None:
+        if getTrackbarPos('0:OFF 1:ON', window_name) == 1:
+            processed_fig = process_fig(fig, kernel_size, sigma, getTrackbarPos(
+                'min_Val', window_name), getTrackbarPos('max_Val', window_name))
+            imshow(window_name, processed_fig)
         else:
-            imshow(fig)
+            imshow(window_name, fig)
         return
 
     namedWindow(window_name)
-    createTrackbar('min_Val', window_name, 125, 255, on_val_update)
+    createTrackbar('min_Val', window_name, 125, 255, on_min_val_update)
     min_val = getTrackbarPos('min_Val', window_name)
-    createTrackbar('max_Val', window_name, min_val, 255, on_val_update)
-    createTrackbar('0:OFF\n1:ON', window_name, 0, 1, on_switch_update)
-
+    createTrackbar('max_Val', window_name, min_val, 255, on_max_val_update)
+    createTrackbar('0:OFF 1:ON', window_name, 0, 1, on_switch_update)
+    imshow(window_name, fig)
     while(True):
         k = waitKey(1) & 0xFF
         if k == 27:
             break
 
+    processed_fig = process_fig(fig, kernel_size, sigma, getTrackbarPos(
+        'min_Val', window_name), getTrackbarPos('max_Val', window_name))
     if 'output_file_name' in kwargs:
         imwrite(kwargs['output_file_name'], processed_fig)
 
@@ -53,17 +86,35 @@ def show_figs(fig: ndarray, **kwargs) -> None:
     return
 
 
-def process_fig(fig: ndarray, target: ndarray, kernel_size: int, sigma: float, min_val: int, max_val: int, **kwargs) -> None:
-
+def process_fig(fig: ndarray, kernel_size: int, sigma: float, min_val: int, max_val: int, **kwargs) -> ndarray:
+    """
+    This is the function containing the main framework in canny edge detect.
+    @input:
+        fig: a fig in 2-dimensional matrix form
+        kernel_size: a integer indicates the shape of the gaussian smoothing kernel.
+        sigma: a float used in gaussian smoothing, a bigger number means more close to average smoothing.
+        min_val: a integer indicates that all edge with gradient under it should be discarded.
+        max-val: a integer indicates that all edge with gradient above it should be preserved.
+    @output:
+        target: the processed figure in 2-dimensional matrix form.
+    """
     filtered_fig = gaussian_filter(fig, kernel_size, sigma)
     gradient, theta = calculate_gradient(filtered_fig)
     regression_fig = non_max_regression(gradient, theta)
     target = double_threshold_process(regression_fig, min_val, max_val)
-    return
+    return target
 
 
 def gaussian_filter(fig: ndarray, kernel_size: int, sigma: float) -> ndarray:
-
+    """
+    This is the function that do gaussian smoothing with given parameters.
+    @input:
+        fig: a figure in 2-dimensional matrix form
+        kernel_size:a integer indicates the shape of the gaussian smoothing kernel.
+        sigma: a float used in gaussian smoothing, a bigger number means more close to average smoothing.
+    @output:
+        filtered_fig: the figure after gaussain smoothing process in 2-dimensional matrix form.
+    """
     assert(kernel_size > 1)
 
     gaussian_kernel = ndarray([kernel_size, kernel_size])
@@ -80,17 +131,24 @@ def gaussian_filter(fig: ndarray, kernel_size: int, sigma: float) -> ndarray:
     return filtered_fig.astype(int16)
 
 
-def calculate_gradient(fig: ndarray) -> tuple(ndarray, ndarray):
-
+def calculate_gradient(fig: ndarray) -> tuple:
+    """
+    This is hte function calculating the gradient using sobel operator.
+    @input:
+        fig: a figure in 2-dimensional matrix form.
+    @output:
+        gradient: the absolute value of gradient in matrix form
+        theta: the direction of gradient in angel form, all elements varing in [-180,180]    
+    """
     gradient = ndarray(fig.shape)
     theta = ndarray(fig.shape)
 
-    operator_h = ndarray([[-1, 0, 1],
-                          [-2, 0, 2],
-                          [-1, 0, 1]])
-    operator_v = ndarray([[-1, -2, -1],
-                          [0,  0,  0],
-                          [1,  2,  1]])
+    operator_h = array([[-1, 0, 1],
+                        [-2, 0, 2],
+                        [-1, 0, 1]])
+    operator_v = array([[-1, -2, -1],
+                        [0,  0,  0],
+                        [1,  2,  1]])
 
     kernel_h = zeros(fig.shape)
     kernel_h[:operator_h.shape[0], :operator_h.shape[1]] = operator_h
@@ -110,6 +168,14 @@ def calculate_gradient(fig: ndarray) -> tuple(ndarray, ndarray):
 
 
 def non_max_regression(gradient: ndarray, theta: ndarray) -> ndarray:
+    """
+    This is the function where non max regression process.
+    @input:
+        gradient: the absolute value of gradient in matrix form
+        theta: the direction of gradient in angel form, all elements varing in [-180,180]
+    @output:
+        regression-fig: the figure after non max regression process.
+    """
     regression_fig = ndarray(gradient.shape)
     for i in range(regression_fig.shape[0]):
         for j in range(regression_fig.shape[1]):
@@ -132,7 +198,38 @@ def non_max_regression(gradient: ndarray, theta: ndarray) -> ndarray:
     return regression_fig
 
 
-def double_threshold_process(gradient: ndarray, theta: ndarray, min_val: int, max_val: int) -> ndarray:
+def double_threshold_process(gradient: ndarray, min_val: int, max_val: int) -> ndarray:
+    """
+    This is the function containing the double threshold process.
+    @input:
+        gradient: the absolute value of gradient in matrix form
+        min_val: a integer indicates that all edge with gradient under it should be discarded.
+        max-val: a integer indicates that all edge with gradient above it should be preserved.
+    @output:
+        result:  the figure after all process of canny edge detect.
+        """
     result = ndarray(gradient.shape)
-    # TODO
+    strong = 255
+    weak = 0
+    centre = 126
+
+    def find_local_edge(i: int, j: int) -> int:
+        result = weak
+        for x in range(3):
+            for y in range(3):
+                if i+x-1 > 0 and j + y - 1 > 9:
+                    if gradient[i+x-1][j+y-1] > max_val:
+                        result = centre
+        return result
+
+    for i in range(gradient.shape[0]):
+        for j in range(gradient.shape[1]):
+            px = gradient[i][j]
+            if px >= max_val:
+                result[i][j] = strong
+            elif px <= min_val:
+                result[i][j] = weak
+            else:
+                result[i, j] = find_local_edge(i, j)
+
     return result
