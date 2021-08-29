@@ -206,7 +206,7 @@ def double_threshold_process(gradient: ndarray, min_val: int, max_val: int) -> n
         min_val: a integer indicates that all edge with gradient under it should be discarded.
         max-val: a integer indicates that all edge with gradient above it should be preserved.
     @output:
-        result:  the figure after all process of canny edge detect.
+        result:  the figure after all process of canny edge detect. 
         """
     result = ndarray(gradient.shape)
     strong = 255
