@@ -1,7 +1,8 @@
 from cv2 import imread, imshow, namedWindow, createTrackbar
 from cv2 import getTrackbarPos, setTrackbarPos, waitKey, imwrite
 from cv2 import destroyAllWindows
-from numpy import int16, ndarray, array
+from numpy import int16, real, ndarray, array, zeros, sqrt, arctan2
+from numpy.fft import fft, fft2, ifft2
 from scipy.signal import convolve2d
 from math import pi, exp
 
@@ -55,10 +56,9 @@ def show_figs(fig: ndarray, **kwargs) -> None:
 def process_fig(fig: ndarray, target: ndarray, kernel_size: int, sigma: float, min_val: int, max_val: int, **kwargs) -> None:
 
     filtered_fig = gaussian_filter(fig, kernel_size, sigma)
-    gradient_x, gradient_y = calculate_gradient(filtered_fig)
-    regression_fig = non_max_regression(filtered_fig, gradient_x, gradient_y)
+    gradient, theta = calculate_gradient(filtered_fig)
+    regression_fig = non_max_regression(gradient, theta)
     target = double_threshold_process(regression_fig, min_val, max_val)
-
     return
 
 
@@ -81,19 +81,41 @@ def gaussian_filter(fig: ndarray, kernel_size: int, sigma: float) -> ndarray:
 
 
 def calculate_gradient(fig: ndarray) -> tuple(ndarray, ndarray):
-    gradient_x = ndarray(fig.shape)
-    gradient_y = ndarray(fig.shape)
-    # TODO
-    return gradient_x, gradient_y
+
+    gradient = ndarray(fig.shape)
+    theta = ndarray(fig.shape)
+
+    operator_h = ndarray([[-1, 0, 1],
+                          [-2, 0, 2],
+                          [-1, 0, 1]])
+    operator_v = ndarray([[-1, -2, -1],
+                          [0,  0,  0],
+                          [1,  2,  1]])
+
+    kernel_h = zeros(fig.shape)
+    kernel_h[:operator_h.shape[0], :operator_h.shape[1]] = operator_h
+    kernel_h = fft2(kernel_h)
+    kernel_v = zeros(fig.shape)
+    kernel_v[:operator_v.shape[0], :operator_v.shape[1]] = operator_v
+    kernel_v = fft(kernel_v)
+
+    fim = fft2(fig)
+    gradient_x = real(ifft2(kernel_h * fim)).astype(float)
+    gradient_y = real(ifft2(kernel_v * fim)).astype(float)
+
+    gradient = sqrt(gradient_x**2 + gradient_y**2)
+    theta = arctan2(gradient_y, gradient_x) * 180 / pi
+
+    return gradient, theta
 
 
-def non_max_regression(fig: ndarray, gradient_x: ndarray, gradient_y: ndarray) -> ndarray:
-    regression_fig = ndarray(fig.shape)
+def non_max_regression(gradient: ndarray, theta: ndarray) -> ndarray:
+    regression_fig = ndarray(gradient.shape)
     # TODO
     return regression_fig
 
 
-def double_threshold_process(fig: ndarray, min_val: int, max_val: int) -> ndarray:
-    result = ndarray(fig.shape)
+def double_threshold_process(gradient: ndarray, theta: ndarray, min_val: int, max_val: int) -> ndarray:
+    result = ndarray(gradient.shape)
     # TODO
     return result
